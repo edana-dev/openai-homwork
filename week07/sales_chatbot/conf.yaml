@@ -1,0 +1,17 @@
+bots:
+  - name: estates
+    title: 房产销售
+    vector_store_dir: db/real_estates_sales
+    data_file: data/real_estate_sales_data.txt
+  - name: appliance
+    title: 电器销售
+    vector_store_dir: db/real_appliance_sales
+    data_file: data/real_appliance_sales_data.txt
+  - name: decor
+    title: 家装销售
+    vector_store_dir: db/real_decor_sales
+    data_file: data/real_decor_sales_data.txt
+  - name: educate
+    title: 教育销售
+    vector_store_dir: data/real_educate_sales
+    data_file: data/real_educate_sales_data.txt

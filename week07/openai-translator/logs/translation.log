@@ -4131,3 +4131,6 @@ Short story collections
 • (1976) The Complete Short Stories of Ernest Hemingway
 • (1995) Collected Stories
 50
+2023-09-07 11:58:09.189 | DEBUG    | translator.writer:save_translated_book:18 - markdown
+2023-09-07 11:58:09.190 | INFO     | translator.writer:_save_translated_book_markdown:90 - 开始导出: /var/folders/x8/9kfcxm0d2ddfrb13lczqx9wh0000gn/T/gradio/c935376a2d3e78e8be13b0fb075a3f882e79c277/The_Old_Man_of_the_Sea_translated.md
+2023-09-07 11:58:09.193 | INFO     | translator.writer:save_translated_book:28 - 翻译完成，文件保存至: /var/folders/x8/9kfcxm0d2ddfrb13lczqx9wh0000gn/T/gradio/c935376a2d3e78e8be13b0fb075a3f882e79c277/The_Old_Man_of_the_Sea_translated.md

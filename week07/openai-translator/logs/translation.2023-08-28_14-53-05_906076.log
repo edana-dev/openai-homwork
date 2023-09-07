@@ -1,0 +1,774 @@
+2023-08-28 15:03:26.542 | DEBUG    | __main__:translation:12 - [翻译任务]
+源文件: /var/folders/x8/9kfcxm0d2ddfrb13lczqx9wh0000gn/T/gradio/9238d9933f6d02625d9d93431a7a031a7982d366/A Neural Attention Model for Abstractive Sentence Summarization.pdf
+源语言: English
+目标语言: Chinese
+2023-08-28 15:03:26.610 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ A Neural Attention Model for Abstractive Sentence Summarization
+AlexanderM.Rush SumitChopra JasonWeston
+FacebookAIResearch/ FacebookAIResearch FacebookAIResearch
+HarvardSEAS spchopra@fb.com jase@fb.com
+srush@seas.harvard.edu
+Abstract
+Summarizationbasedontextextractionis
+inherentlylimited,butgeneration-styleab-
+stractive methods have proven challeng-
+5102
+ing to build. In this work, we propose
+a fully data-driven approach to abstrac-
+tive sentence summarization. Our method
+utilizes a local attention-based model that peS
+generates each word of the summary con-
+ditioned on the input sentence. While the
+3
+model is structurally simple, it can eas-
+ily be trained end-to-end and scales to a ]LC.sc[
+large amount of training data. The model
+shows significant performance gains on
+theDUC-2004sharedtaskcomparedwith Figure 1: Exampleoutputoftheattention-basedsumma-
+severalstrongbaselines. rization(ABS)system. Theheatmaprepresentsasoftalign-
+ment between the input (right) and the generated summary
+(top). Thecolumnsrepresentthedistributionovertheinput 2v58600.9051:viXra
+1 Introduction
+aftergeneratingeachword.
+Summarization is an important challenge of natu-
+rallanguageunderstanding. Theaimistoproduce Lapata, 2008; Woodsend et al., 2010). These ap-
+a condensed representation of an input text that proachesaredescribedinmoredetailinSection6.
+captures the core meaning of the original. Most Weinsteadexploreafullydata-drivenapproach
+successful summarization systems utilize extrac- forgeneratingabstractivesummaries. Inspiredby
+tive approaches that crop out and stitch together the recent success of neural machine translation,
+portions of the text to produce a condensed ver- we combine a neural language model with a con-
+sion. In contrast, abstractive summarization at- textual input encoder. Our encoder is modeled
+tempts to produce a bottom-up summary, aspects off of the attention-based encoder of Bahdanau et
+ofwhichmaynotappearaspartoftheoriginal. al. (2014) in that it learns a latent soft alignment
+We focus on the task of sentence-level sum- overtheinputtexttohelpinformthesummary(as
+marization. While much work on this task has shown in Figure 1). Crucially both the encoder
+looked at deletion-based sentence compression andthegenerationmodelaretrainedjointlyonthe
+techniques (Knight and Marcu (2002), among sentence summarization task. The model is de-
+manyothers),studiesofhumansummarizersshow scribed in detail in Section 3. Our model also in-
+thatitiscommontoapplyvariousotheroperations corporatesabeam-searchdecoderaswellasaddi-
+while condensing, such as paraphrasing, general- tionalfeaturestomodelextractiveelements;these
+ization, and reordering (Jing, 2002). Past work aspectsarediscussedinSections4and5.
+has modeled this abstractive summarization prob- Thisapproachtosummarization,whichwecall
+lemeitherusinglinguistically-inspiredconstraints Attention-Based Summarization (ABS), incorpo-
+(Dorr et al., 2003; Zajic et al., 2004) or with syn- rates less linguistic structure than comparable ab-
+tactic transformations of the input text (Cohn and stractivesummarizationapproaches,butcaneasily
+2023-08-28 15:03:26.669 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ Input(x ,...,x ).Firstsentenceofarticle:
+1 18
+russiandefenseministerivanovcalledsundayforthecreationofajointfrontforcombatingglobalterrorism
+Output(y ,...,y ).Generatedheadline:
+1 8
+russiacallsforjointfrontagainstterrorism ⇐ g(terrorism,x,for,joint,front,against)
+Figure2: Exampleinputsentenceandthegeneratedsummary.Thescoreofgeneratingy (terrorism)isbasedonthe
+i+1
+contexty (for...against)aswellastheinputx ...x . Notethatthesummarygeneratedisabstractivewhichmakes
+c 1 18
+itpossibletogeneralize(russian defense ministertorussia)andparaphrase(for combatingtoagainst),
+inadditiontocompressing(droppingthe creation of),seeJing(2002)forasurveyoftheseeditingoperations.
+scaletotrainonalargeamountofdata. Sinceour a sequence y ,...,y . Note that in contrast to
+1 N
+system makes no assumptions about the vocabu- relatedtasks,likemachinetranslation,wewillas-
+lary of the generated summary it can be trained sume that the output length N is fixed, and that
+directly on any document-summary pair.1 This the system knows the length of the summary be-
+allows us to train a summarization model for foregeneration.2
+headline-generation on a corpus of article pairs Next consider the problem of gen-
+from Gigaword (Graff et al., 2003) consisting of erating summaries. Define the set
+around 4 million articles. An example of genera- Y ⊂ ({0,1}V,...,{0,1}V) as all possible
+tionisgiveninFigure2,andwediscussthedetails sentencesoflengthN,i.e. foralliandy ∈ Y,y
+i
+ofthistaskinSection7. isanindicator. Wesayasystemisabstractiveifit
+To test the effectiveness of this approach we triestofindtheoptimalsequencefromthissetY,
+run extensive comparisons with multiple abstrac-
+argmaxs(x,y), (1)
+tive and extractive baselines, including traditional
+y∈Y
+syntax-based systems, integer linear program-
+constrained systems, information-retrieval style underascoringfunctions : X×Y (cid:55)→ R. Contrast
+approaches,aswellasstatisticalphrase-basedma- thistoafullyextractivesentencesummary3which
+chine translation. Section 8 describes the results transferswordsfromtheinput:
+of these experiments. Our approach outperforms
+argmax s(x,x ), (2)
+a machine translation system trained on the same [m1,...,mN]
+m∈{1,...M}N
+large-scaledatasetandyieldsalargeimprovement
+over the highest scoring system in the DUC-2004 ortotherelatedproblemofsentencecompression
+competition. thatconcentratesondeletingwordsfromtheinput:
+2 Background argmax s(x,x ). (3)
+[m1,...,mN]
+m∈{1,...M}N,mi−1<mi
+Webeginbydefiningthesentencesummarization
+Whileabstractivesummarizationposesamoredif-
+task. Given an input sentence, the goal is to pro-
+ficult generation challenge, the lack of hard con-
+duce a condensed summary. Let the input con-
+straintsgivesthesystemmorefreedomingenera-
+sist of a sequence of M words x ,...,x com-
+1 M
+tionandallowsittofitwithawiderrangeoftrain-
+ing from a fixed vocabulary V of size |V| = V .
+ingdata.
+Wewillrepresenteachwordasanindicatorvector
+Inthisworkwefocusonfactoredscoringfunc-
+x ∈ {0,1}V for i ∈ {1,...,M}, sentences as a
+i
+tions, s, that take into account a fixed window of
+sequence of indicators, and X as the set of possi-
+previouswords:
+bleinputs. Furthermoredefinethenotationx
+[i,j,k]
+toindicatethesub-sequenceofelementsi,j,k.
+N−1
+(cid:88)
+A summarizer takes x as input and outputs a s(x,y) ≈ g(y ,x,y ), (4)
+i+1 c
+shortened sentence y of length N < M. We will i=0
+assume that the words in the summary also come
+2FortheDUC-2004evaluation,itisactuallythenumber
+fromthesamevocabularyV andthattheoutputis ofbytesoftheoutputthatiscapped. Moredetailisgivenin
+Section7.
+1In contrast to a large-scale sentence compression sys- 3Unfortunatelytheliteratureisinconsistentontheformal
+tems like Filippova and Altun (2013) which require mono- definitionofthisdistinction.Somesystemsself-describedas
+tonicalignedcompressions. abstractivewouldbeextractiveunderourdefinition.
+2023-08-28 15:03:26.716 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ where we define y c (cid:44) y [i−C+1,...,i] for a window p(y i+1|x,y c;θ) enc 3
+ofsizeC.
+V
+In particular consider the conditional log- W
+h x¯ p
+probability of a summary given the input,
+s(x,y) = logp(y|x;θ). Wecanwritethisas: enc U P
+y˜ x˜ y˜(cid:48)
+N−1 c c
+(cid:88)
+logp(y|x;θ) ≈ logp(y |x,y ;θ), E F G
+i+1 c
+i=0 x y c x y c
+where we make a Markov assumption on the
+(a) (b)
+length of the context as size C and assume for
+i < 1,y isaspecialstartsymbol(cid:104)S(cid:105). Figure 3: (a)AnetworkdiagramfortheNNLMdecoder
+i
+With this scoring function in mind, our main withadditionalencoderelement. (b)Anetworkdiagramfor
+theattention-basedencoderenc .
+3
+focus will be on modelling the local conditional
+distribution: p(y |x,y ;θ). The next section
+i+1 c
+defines a parameterization for this distribution, in The parameters are θ = (E,U,V,W) where
+Section 4, we return to the question of generation E ∈ RD×V is a word embedding matrix, U ∈
+forfactoredmodels,andinSection5weintroduce R(CD)×H, V ∈ RV×H, W ∈ RV×H are weight
+amodifiedfactoredscoringfunction. matrices,4 D is the size of the word embeddings,
+and h is a hidden layer of size H. The black-box
+3 Model
+function enc is a contextual encoder term that re-
+turnsavectorofsizeH representingtheinputand
+The distribution of interest, p(y |x,y ;θ), is
+i+1 c
+currentcontext;weconsiderseveralpossiblevari-
+a conditional language model based on the in-
+ants, described subsequently. Figure 3a gives a
+put sentence x. Past work on summarization and
+schematic representation of the decoder architec-
+compressionhasusedanoisy-channelapproachto
+ture.
+splitandindependentlyestimatealanguagemodel
+andaconditionalsummarizationmodel(Bankoet
+3.2 Encoders
+al.,2000;KnightandMarcu,2002;Daume´ IIIand
+Marcu,2002),i.e., Notethatwithouttheencodertermthisrepresents
+a standard language model. By incorporating in
+argmaxlogp(y|x) = argmaxlogp(y)p(x|y) enc and training the two elements jointly we cru-
+y y
+cially can incorporate the input text into genera-
+where p(y) and p(x|y) are estimated separately. tion. We discuss next several possible instantia-
+Here we instead follow work in neural machine tionsoftheencoder.
+translation and directly parameterize the original
+Bag-of-Words Encoder Our most basic model
+distributionasaneuralnetwork. Thenetworkcon-
+simplyusesthebag-of-wordsoftheinputsentence
+tains both a neural probabilistic language model
+embeddeddowntosizeH,whileignoringproper-
+and an encoder which acts as a conditional sum-
+ties of the original order or relationships between
+marizationmodel.
+neighboringwords. Wewritethismodelas:
+3.1 NeuralLanguageModel
+enc (x,y ) = p(cid:62)x˜,
+The core of our parameterization is a language 1 c
+modelforestimatingthecontextualprobabilityof p = [1/M,...,1/M],
+the next word. The language model is adapted x˜ = [Fx ,...,Fx ].
+1 M
+from a standard feed-forward neural network lan-
+guage model (NNLM), particularly the class of Where the input-side embedding matrix F ∈
+NNLMs described by Bengio et al. (2003). The RH×V is the only new parameter of the encoder
+fullmodelis: andp ∈ [0,1]M isauniformdistributionoverthe
+inputwords.
+p(y |y ,x;θ) ∝ exp(Vh+Wenc(x,y )),
+i+1 c c
+y˜ = [Ey ,...,Ey ], 4Each of the weight matrices U, V, W also has a cor-
+c i−C+1 i
+responding bias term. For readability, we omit these terms
+h = tanh(Uy˜ c). throughoutthepaper.
+2023-08-28 15:03:26.840 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ For summarization this model can capture the Where G ∈ RD×V is an embedding of the con-
+relative importance of words to distinguish con- text, P ∈ RH×(CD) is a new weight matrix pa-
+tent words from stop words or embellishments. rameter mapping between the context embedding
+Potentially the model can also learn to combine and input embedding, and Q is a smoothing win-
+words; although it is inherently limited in repre- dow. ThefullmodelisshowninFigure3b.
+sentingcontiguousphrases.
+Informallywecanthinkofthismodelassimply
+replacingtheuniformdistributioninbag-of-words
+ConvolutionalEncoder Toaddresssomeofthe
+with a learned soft alignment, P, between the in-
+modelling issues with bag-of-words we also con-
+put and the summary. Figure 1 shows an exam-
+sider using a deep convolutional encoder for the
+ple of this distribution p as a summary is gener-
+input sentence. This architecture improves on the
+ated. The soft alignment is then used to weight
+bag-of-wordsmodelbyallowinglocalinteractions
+the smoothed version of the input x¯ when con-
+between words while also not requiring the con-
+structing the representation. For instance if the
+texty whileencodingtheinput.
+c
+current context aligns well with position i then
+Weutilizeastandardtime-delayneuralnetwork
+the words x ,...,x are highly weighted
+(TDNN) architecture, alternating between tempo- i−Q i+Q
+by the encoder. Together with the NNLM, this
+ralconvolutionlayersandmaxpoolinglayers.
+model can be seen as a stripped-down version
+∀j, enc (x,y ) = maxx˜L , (5) of the attention-based neural machine translation
+2 c j i,j
+i model.5
+∀i,l∈{1,...L}, x˜l = tanh(max{x¯l ,x¯l }),
+j 2i−1 2i
+(6)
+∀i,l∈{1,...L}, x¯l = Qlx˜l−1 , (7) 3.3 Training
+i [i−Q,...,i+Q]
+x˜0 = [Fx ,...,Fx ]. (8)
+1 M The lack of generation constraints makes it pos-
+Where F is a word embedding matrix and sible to train the model on arbitrary input-output
+QL×H×2Q+1 consists of a set of filters for each pairs. Once we have defined the local condi-
+layer{1,...L}. Eq.7isatemporal(1D)convolu- tional model, p(y |x,y ;θ), we can estimate
+i+1 c
+tion layer, Eq. 6 consists of a 2-element temporal the parameters to minimize the negative log-
+max pooling layer and a pointwise non-linearity, likelihoodofasetofsummaries. Definethistrain-
+andfinaloutputEq.5isamaxovertime. Ateach ing set as consisting of J input-summary pairs
+layer x˜ is one half the size of x¯. For simplicity (x(1),y(1)),...,(x(J),y(J)). The negative log-
+we assume that the convolution is padded at the likelihood conveniently factors6 into a term for
+boundaries, and that M is greater than 2L so that eachtokeninthesummary:
+thedimensionsarewell-defined.
+Attention-Based Encoder While the convolu-
+J
+tional encoder has richer capacity than bag-of- NLL(θ) = −(cid:88) logp(y(j)|x(j);θ),
+words, it still is required to produce a single rep-
+j=1
+resentation for the entire input sentence. A simi- J N−1
+larissueinmachinetranslationinspiredBahdanau = −(cid:88)(cid:88) logp(y i( +j) 1|x(j),y c;θ).
+j=1 i=1
+et al. (2014) to instead utilize an attention-based
+contextualencoderthatconstructsarepresentation
+basedonthegenerationcontext. Herewenotethat
+WeminimizeNLLbyusingmini-batchstochastic
+if we exploit this context, we can actually use a
+gradientdescent. Thedetailsaredescribedfurther
+rathersimplemodelsimilartobag-of-words:
+inSection7.
+enc (x,y ) = p(cid:62)x¯,
+3 c
+p ∝ exp(x˜Py˜ c(cid:48)), 5To be explicit, compared to Bahdanau et al. (2014)
+our model uses an NNLM instead of a target-side LSTM,
+x˜ = [Fx ,...,Fx ],
+1 M source-sidewindowedaveraginginsteadofasource-sidebi-
+y˜(cid:48) = [Gy ,...,Gy ], directionalRNN,andaweighteddot-productforalignment
+c i−C+1 i
+insteadofanalignmentMLP.
+i (cid:88)+Q 6This is dependent on using the gold standard contexts
+∀i x¯ i = x˜ i/Q. y c. An alternative is to use the predicted context within a
+structuredorreenforcement-learningstyleobjective.
+q=i−Q
+2023-08-28 15:03:26.886 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ 4 GeneratingSummaries 5 Extension: ExtractiveTuning
+We now return to the problem of generating sum- While we will see that the attention-based model
+maries. RecallfromEq.4thatourgoalistofind, is effective at generating summaries, it does miss
+an important aspect seen in the human-generated
+N−1
+y∗ = argmax (cid:88) g(y ,x,y ). references. In particular the abstractive model
+i+1 c
+y∈Y does not have the capacity to find extractive word
+i=0
+matcheswhennecessary,forexampletransferring
+Unlike phrase-based machine translation where
+unseenpropernounphrasesfromtheinput. Simi-
+inferenceisNP-hard,itactuallyistractableinthe-
+larissueshavealsobeenobservedinneuraltrans-
+orytocomputey∗. Sincethereisnoexplicithard
+lation models particularly in terms of translating
+alignment constraint, Viterbi decoding can be ap-
+rarewords(Luongetal.,2015).
+plied and requires O(NVC) time to find an exact
+Toaddressthisissueweexperimentwithtuning
+solution. In practice though V is large enough to
+a very small set of additional features that trade-
+make this difficult. An alternative approach is to
+off the abstractive/extractive tendency of the sys-
+approximatetheargmaxwithastrictlygreedyor
+tem. Wedothisbymodifyingourscoringfunction
+deterministicdecoder.
+to directly estimate the probability of a summary
+A compromise between exact and greedy de-
+usingalog-linearmodel,asisstandardinmachine
+coding is to use a beam-search decoder (Algo-
+translation:
+rithm 1) which maintains the full vocabulary V
+N−1
+while limiting itself to K potential hypotheses at (cid:88)
+p(y|x;θ,α) ∝ exp(α(cid:62) f(y ,x,y )).
+each position of the summary. This has been the i+1 c
+i=0
+standard approach for neural MT models (Bah-
+danau et al., 2014; Sutskever et al., 2014; Luong Where α ∈ R5 is a weight vector and f is a fea-
+etal.,2015). Thebeam-searchalgorithmisshown turefunction. Findingthebestsummaryunderthis
+here,modifiedforthefeed-forwardmodel: distributioncorrespondstomaximizingafactored
+scoringfunctions,
+Algorithm1 BeamSearch
+N−1
+Input: Parametersθ,beamsizeK,inputx s(y,x) = (cid:88) α(cid:62)f(y ,x,y ).
+Output: Approx.K-bestsummaries i+1 c
+π[0]←{(cid:15)} i=0
+S =Vifabstractiveelse{x i|∀i} where g(y ,x,y ) (cid:44) α(cid:62)f(y ,x,y ) to sat-
+fori=0toN −1do i+1 c i+1 c
+(cid:46)GenerateHypotheses isfy Eq. 4. The function f is defined to combine
+(cid:8) (cid:9)
+N ← [y,y i+1] | y∈π[i],y i+1 ∈S the local conditional probability with some addi-
+tionalindicatorfeatrues:
+(cid:46)HypothesisRecombination
+(cid:26) y∈N | s(y,x)>s(y(cid:48),x) (cid:27)
+H← f(y i+1,x,y c) = [logp(y i+1|x,y c;θ),
+∀y(cid:48) ∈N s.t.y =y(cid:48)
+c c
+1{∃j.y = x },
+(cid:46)FilterK-Max i+1 j
+π[i+1]←K-argmaxg(y i+1,y c,x)+s(y,x) 1{∃j.y = x ∀k ∈ {0,1}},
+i+1−k j−k
+y∈H
+endfor 1{∃j.y = x ∀k ∈ {0,1,2}},
+i+1−k j−k
+return π[N]
+1{∃k > j.y = x ,y = x }].
+i k i+1 j
+As with Viterbi this beam search algorithm is These features correspond to indicators of uni-
+much simpler than beam search for phrase-based gram,bigram,andtrigrammatchwiththeinputas
+MT. Because there is no explicit constraint that well as reordering of input words. Note that set-
+each source word be used exactly once there is ting α = (cid:104)1,0,...,0(cid:105) gives a model identical to
+no need to maintain a bit set and we can sim- standard ABS.
+plymovefromleft-to-rightgeneratingwords. The After training the main neural model, we fix θ
+beam search algorithm requires O(KNV) time. and tune the α parameters. We follow the statis-
+From a computational perspective though, each ticalmachinetranslationsetupanduseminimum-
+round of beam search is dominated by computing errorratetraining(MERT)totuneforthesumma-
+p(y |x,y ) for each of the K hypotheses. These rization metric on tuning data (Och, 2003). This
+i c
+can be computed as a mini-batch, which in prac- tuningstepisalsoidenticaltotheoneusedforthe
+ticegreatlyreducesthefactorofK. phrase-basedmachinetranslationbaseline.
+2023-08-28 15:03:26.928 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ 6 RelatedWork tion. The core of our model is a NNLM based on
+thatofBengioetal.(2003).
+Abstractive sentence summarization has been tra-
+Recently, there have been several papers about
+ditionallyconnectedtothetaskofheadlinegener-
+modelsformachinetranslation(Kalchbrennerand
+ation. OurworkissimilartoearlyworkofBanko
+Blunsom,2013;Choetal.,2014;Sutskeveretal.,
+et al. (2000) who developed a statistical machine
+2014). Of these our model is most closely related
+translation-inspired approach for this task using a
+to the attention-based model of Bahdanau et al.
+corpus of headline-article pairs. We extend this
+(2014),whichexplicitlyfindsasoftalignmentbe-
+approach by: (1) using a neural summarization
+tween the current position and the input source.
+model as opposed to a count-based noisy-channel
+Most of these models utilize recurrent neural net-
+model,(2)trainingthemodelonmuchlargerscale
+works (RNNs) for generation as opposed to feed-
+(25K compared to 4 million articles), (3) and al-
+forwardmodels. WehopetoincorporateanRNN-
+lowingfullyabstractivedecoding.
+LMinfuturework.
+This task was standardized around the DUC-
+2003 and DUC-2004 competitions (Over et al., 7 ExperimentalSetup
+2007). The TOPIARY system (Zajic et al., 2004)
+performedthebestinthistask,andisdescribedin We experiment with our attention-based sentence
+detailinthenextsection. Wepointinterestedread- summarizationmodelonthetaskofheadlinegen-
+erstotheDUCwebpage(http://duc.nist. eration. In this section we describe the corpora
+gov/) for the full list of systems entered in this used for this task, the baseline methods we com-
+sharedtask. pare with, and implementation details of our ap-
+proach.
+More recently, Cohn and Lapata (2008) give a
+compression method which allows for more ar-
+7.1 DataSet
+bitrary transformations. They extract tree trans-
+duction rules from aligned, parsed texts and learn The standard sentence summarization evaluation
+weights on transfomations using a max-margin set is associated with the DUC-2003 and DUC-
+learning algorithm. Woodsend et al. (2010) pro- 2004 shared tasks (Over et al., 2007). The
+pose a quasi-synchronous grammar approach uti- data for this task consists of 500 news arti-
+lizing both context-free parses and dependency cles from the New York Times and Associated
+parses to produce legible summaries. Both of Press Wire services each paired with 4 different
+these approaches differ from ours in that they di- human-generated reference summaries (not actu-
+rectlyusethesyntaxoftheinput/outputsentences. ally headlines), capped at 75 bytes. This data
+The latter system is W&L in our results; we at- setisevaluation-only,althoughthesimilarlysized
+tempted to train the former system T3 on this DUC-2003 data set was made available for the
+datasetbutcouldnottrainitatscale. task. Theexpectationisforasummaryofroughly
+InadditiontoBankoetal.(2000)therehasbeen 14 words, based on the text of a complete arti-
+some work using statistical machine translation cle (although we only make use of the first sen-
+directly for abstractive summary. Wubben et al. tence). The full data set is available by request at
+http://duc.nist.gov/data.html.
+(2012)utilizeMOSESdirectlyasamethodfortext
+simplification. For this shared task, systems were entered and
+evaluated using several variants of the recall-
+RecentlyFilippovaandAltun(2013)developed
+oriented ROUGE metric (Lin, 2004). To make
+astrictlyextractivesystemthatistrainedonarel-
+recall-only evaluation unbiased to length, out-
+atively large corpora (250K sentences) of article-
+put of all systems is cut-off after 75-characters
+title pairs. Because their focus is extractive com-
+and no bonus is given for shorter summaries.
+pression,thesentencesaretransformedbyaseries
+Unlike BLEU which interpolates various n-gram
+ofheuristicssuchthatthewordsareinmonotonic
+matches, there are several versions of ROUGE
+alignment. Oursystemdoesnotrequirethisalign-
+for different match lengths. The DUC evaluation
+mentstepbutinsteadusesthetextdirectly.
+usesROUGE-1(unigrams),ROUGE-2(bigrams),
+Neural MT This work is closely related to re- andROUGE-L(longest-commonsubstring),allof
+cent work on neural network language models whichwereport.
+(NNLM) and to work on neural machine transla- In addition to the standard DUC-2014 evalu-
+2023-08-28 15:03:26.971 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ ation, we also report evaluation on single refer- From the DUC-2004 task we include the PRE-
+ence headline-generation using a randomly held- FIX baseline that simply returns the first 75-
+out subset of Gigaword. This evaluation is closer characters of the input as the headline. We
+to the task the model is trained for, and it allows also report the winning system on this shared
+ustouseabiggerevaluationset,whichwewillin- task, TOPIARY (Zajic et al., 2004). TOPIARY
+clude in our code release. For this evaluation, we mergesacompressionsystemusinglinguistically-
+tunesystemstogenerateoutputoftheaveragetitle motivatedtransformationsoftheinput(Dorretal.,
+length. 2003)withanunsupervisedtopicdetection(UTD)
+For training data for both tasks, we utilize the algorithm that appends key phrases from the full
+annotated Gigaword data set (Graff et al., 2003; article onto the compressed output. Woodsend et
+Napoles et al., 2012), which consists of standard al.(2010)(describedabove)alsoreportresultson
+Gigaword, preprocessed with Stanford CoreNLP theDUCdataset.
+tools(Manningetal.,2014). Ourmodelonlyuses
+The DUC task also includes a set of manual
+annotations for tokenization and sentence separa-
+summaries performed by 8 human summarizers
+tion, althoughseveralofthebaselinesuseparsing
+each summarizing half of the test data sentences
+andtaggingaswell. Gigawordcontainsaround9.5
+(yielding4referencespersentence). Wereportthe
+millionnewsarticlessourcedfromvariousdomes-
+average inter-annotater agreement score as REF-
+tic and international news services over the last
+ERENCE. For reference, the best human evaluator
+twodecades.
+scores31.7ROUGE-1.
+Forourtrainingset,wepairtheheadlineofeach
+article with its first sentence to create an input- We also include several baselines that have ac-
+summarypair. Whilethemodelcouldintheorybe cess to the same training data as our system. The
+trainedonanypair,Gigawordcontainsmanyspu- first is a sentence compression baseline COM-
+rious headline-article pairs. We therefore prune PRESS (Clarke and Lapata, 2008). This model
+training based on the following heuristic filters: usesthesyntacticstructureoftheoriginalsentence
+(1) Are there no non-stop-words in common? (2) along with a language model trained on the head-
+Does the title contain a byline or other extrane- line data to produce a compressed output. The
+ouseditingmarks? (3)Doesthetitlehaveaques- syntax and language model are combined with a
+tion mark or colon? After applying these filters, set of linguistic constraints and decoding is per-
+the training set consists of roughly J = 4 million formedwithanILPsolver.
+title-articlepairs. Weapplyaminimalpreprocess-
+ingstepusingPTBtokenization,lower-casing,re- To control for memorizing titles from training,
+placing all digit characters with #, and replacing we implement an information retrieval baseline,
+of word types seen less than 5 times with UNK. IR. This baseline indexes the training set, and
+We also remove all articles from the time-period gives the title for the article with highest BM-25
+oftheDUCevaluation. release. matchtotheinput(seeManningetal.(2008)).
+Thecompleteinputtrainingvocabularyconsists
+Finally, we use a phrase-based statistical ma-
+of119millionwordtokensand110Kuniqueword
+chine translation system trained on Gigaword
+typeswithanaveragesentencesizeof31.3words.
+to produce summaries, MOSES+ (Koehn et al.,
+Theheadlinevocabularyconsistsof31millionto-
+2007). To improve the baseline for this task, we
+kens and 69K word types with the average title
+augment the phrase table with “deletion” rules
+of length 8.3 words (note that this is significantly
+mapping each article word to (cid:15), include an addi-
+shorter than the DUC summaries). On average
+tional deletion feature for these rules, and allow
+there are 4.6 overlapping word types between the
+for an infinite distortion limit. We also explic-
+headline and the input; although only 2.6 in the
+itly tune the model using MERT to target the 75-
+first75-charactersoftheinput.
+bytecappedROUGEscoreasopposedtostandard
+BLEU-based tuning. Unfortunately, one remain-
+7.2 Baselines
+ingissueisthatitisnon-trivialtomodifythetrans-
+Due to the variety of approaches to the sentence lation decoder to produce fixed-length outputs, so
+summarization problem, we report a broad set of we tune the system to produce roughly the ex-
+headline-generationbaselines. pectedlength.
+2023-08-28 15:03:27.012 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ DUC-2004 Gigaword
+Model ROUGE-1 ROUGE-2 ROUGE-L ROUGE-1 ROUGE-2 ROUGE-L Ext.%
+IR 11.06 1.67 9.67 16.91 5.55 15.58 29.2
+PREFIX 22.43 6.49 19.65 23.14 8.25 21.73 100
+COMPRESS 19.77 4.02 17.30 19.63 5.13 18.28 100
+W&L 22 6 17 - - - -
+TOPIARY 25.12 6.46 20.12 - - - -
+MOSES+ 26.50 8.13 22.85 28.77 12.10 26.44 70.5
+ABS 26.55 7.06 22.05 30.88 12.22 27.77 85.4
+ABS+ 28.18 8.49 23.81 31.00 12.65 28.34 91.5
+REFERENCE 29.21 8.38 24.46 - - - 45.6
+Table 1: ExperimentalresultsonthemainsummarytasksonvariousROUGEmetrics. Baselinemodelsaredescribedin
+detailinSection7.2.WereportthepercentageoftokensinthesummarythatalsoappearintheinputforGigawordasExt %.
+7.3 Implementation prisingly well on ROUGE-1 which makes sense
+given the earlier observed overlap between article
+Fortraining,weusemini-batchstochasticgradient
+andsummary.
+descent to minimize negative log-likelihood. We
+use a learning rate of 0.05, and split the learning Both ABS and MOSES+ perform better
+rate by half if validation log-likelihood does not than TOPIARY, particularly on ROUGE-2 and
+improveforanepoch. Trainingisperformedwith ROUGE-L in DUC. The full model ABS+ scores
+shuffledmini-batchesofsize64. Theminibatches the best on these tasks, and is significantly better
+aregroupedbyinputlength. Aftereachepoch,we based on the default ROUGE confidence level
+renormalize the embedding tables (Hinton et al., than TOPIARY on all metrics, and MOSES+ on
+2012). Based on the validation set, we set hyper- ROUGE-1 for DUC as well as ROUGE-1 and
+parametersasD = 200,H = 400,C = 5,L = 3, ROUGE-LforGigaword. Notethattheadditional
+andQ = 2. extractive features bias the system towards re-
+Our implementation uses the Torch numerical taining more input words, which is useful for the
+framework (http://torch.ch/) and will be underlyingmetric.
+openlyavailablealongwiththedatapipeline. Cru- Nextweconsiderablationstothemodelandal-
+cially, training is performed on GPUs and would gorithm structure. Table 2 shows experiments for
+be intractable or require approximations other- themodelwithvariousencoders. Fortheseexper-
+wise. Processing 1000 mini-batches with D = iments we look at the perplexity of the system as
+200, H = 400requires160seconds. Bestvalida- a language model on validation data, which con-
+tion accuracy is reached after 15 epochs through trolsforthevariableofinferenceandtuning. The
+thedata,whichrequiresaround4daysoftraining. NNLM language model with no encoder gives a
+Additionally,asdescribedinSection5weapply gain over the standard n-gram language model.
+aMERTtuningstepaftertrainingusingtheDUC- Including even the bag-of-words encoder reduces
+2003data. ForthisstepweuseZ-MERT(Zaidan, perplexity number to below 50. Both the convo-
+2009). WerefertothemainmodelasABSandthe lutional encoder and the attention-based encoder
+tunedmodelas ABS+. furtherreducetheperplexity,withattentiongiving
+avaluebelow30.
+8 Results
+Wealsoconsidermodelanddecodingablations
+Our main results are presented in Table 1. We on the main summary model, shown in Table 3.
+run experiments both using the DUC-2004 eval- TheseexperimentscomparetotheBoWencoding
+uation data set (500 sentences, 4 references, 75 models, compare beam search and greedy decod-
+bytes) with all systems and a randomly held-out ing, as well as restricting the system to be com-
+Gigaword test set (2000 sentences, 1 reference). pleteextractive. Ofthesefeatures,thebiggestim-
+WefirstnotethatthebaselinesCOMPRESSandIR pactisfromusingamorepowerfulencoder(atten-
+do relatively poorly on both datasets, indicating tionversusBoW),aswellasusingbeamsearchto
+that neither just having article information or lan- generatesummaries. Theabstractivenatureofthe
+guagemodelinformationaloneissufficientforthe systemhelps,butforROUGEevenusingpureex-
+task. The PREFIX baseline actually performs sur- tractivegenerationiseffective.
+2023-08-28 15:03:27.074 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ Model Encoder Perplexity
+I(1): adetainediranian-americanacademicaccusedofactingagainst
+KN-Smoothed5-Gram none 183.2 nationalsecurityhasbeenreleasedfromatehranprisonafterahefty
+Feed-ForwardNNLM none 145.9 bailwasposted,atopjudiciaryofficialsaidtuesday.
+G:iranian-americanacademicheldintehranreleasedonbail
+Bag-of-Word enc 43.6
+1 A:detainediranian-americanacademicreleasedfromjailafterposting
+Convolutional(TDNN) enc 35.9
+2 bail
+Attention-Based(ABS) enc 3 27.1 A+: detained iranian-american academic released from prison after
+heftybail
+Table 2: Perplexity results on the Gigaword validation I(2):ministersfromtheeuropeanunionanditsmediterraneanneighbors
+set comparing various language models with C=5 and end- gatheredhereunderheavysecurityonmondayforanunprecedented
+conferenceoneconomicandpoliticalcooperation.
+to-end summarization models. The encoders are defined in
+G:europeanmediterraneanministersgatherforlandmarkconference
+Section3. byjuliebradford
+A: mediterranean neighbors gather for unprecedented conference on
+heavysecurity
+Decoder Model Cons. R-1 R-2 R-L A+:mediterraneanneighborsgatherunderheavysecurityforunprece-
+dentedconference
+Greedy ABS+ Abs 26.67 6.72 21.70
+Beam BOW Abs 22.15 4.60 18.23 I(3):thedeathtollfromaschoolcollapseinahaitianshanty-townrose
+to##afterrescueworkersuncoveredaclassroomwith##deadstudents
+Beam ABS+ Ext 27.89 7.56 22.84
+andtheirteacher,officialssaidsaturday.
+Beam ABS+ Abs 28.48 8.91 23.97 G:tollrisesto##inhaitischoolunk:official
+A:deathtollinhaitischoolaccidentrisesto##
+A+:deathtollinhaitischoolto##deadstudents
+Table 3: ROUGEscoresonDUC-2003developmentdata
+forvariousversionsofinference. GreedyandBeamarede- I(4): australianforeignministerstephensmithsundaycongratulated
+newzealand’snewprimeminister-electjohnkeyashepraisedousted
+scribedinSection4.Ext.isapurelyextractiveversionofthe
+leaderhelenclarkasa“gutsy”andrespectedpolitician.
+system(Eq.2) G:timecaughtupwithnz’sgutsyclarksaysaustralianfm
+A:australianforeignministercongratulatesnewnzpmafterelection
+Finallyweconsiderexamplesummariesshown A+: australian foreign minister congratulates smith new zealand as
+leader
+in Figure 4. Despite improving on the base-
+I(5):twodrunkensouthafricanfanshurledracistabuseatthecountry
+line scores, this model is far from human per- ’srugbysevenscoachaftertheteamwereeliminatedfromtheweekend
+formance on this task. Generally the models are ’shongkongtournament,reportssaidtuesday.
+G:rugbyunion:racisttauntsmarhongkongsevens:report
+good at picking out key words from the input, A:southafricanfanshurlracisttauntsatrugbysevens
+A+:southafricanfansracistabuseatrugbysevenstournament
+such as names and places. However, both models
+I(6):christianconservatives–kingmakersinthelasttwouspresidential
+willreorderwordsinsyntacticallyincorrectways,
+elections–mayhavelesssuccessingettingtheirpickelectedin####,
+for instance in Sentence 7 both models have the politicalobserverssay.
+G:christianconservativespowerdiminishedaheadof####vote
+wrong subject. ABS often uses more interesting A:christianconservativesmayhavelesssuccessin####election
+A+:christianconservativesinthelasttwouspresidentialelections
+re-wording, for instance new nz pm after election
+inSentence4,butthiscanalsoleadtoattachment I(7):thewhitehouseonthursdaywarnediranofpossiblenewsanctions
+aftertheunnuclearwatchdogreportedthattehranhadbegunsensitive
+mistakes such a russian oil giant chevron in Sen- nuclearworkatakeysiteindefianceofunresolutions.
+G:uswarnsiranofstepbackwardonnuclearissue
+tence11. A:iranwarnsofpossiblenewsanctionsonnuclearwork
+A+:unnuclearwatchdogwarnsiranofpossiblenewsanctions
+9 Conclusion
+I(8): thousandsofkashmirischantingpro-pakistanslogansonsunday
+attended a rally to welcome back a hardline separatist leader who
+Wehavepresentedaneuralattention-basedmodel underwentcancertreatmentinmumbai.
+G:thousandsattendrallyforkashmirhardliner
+forabstractivesummarization,basedonrecentde- A:thousandsrallyinsupportofhardlinekashmiriseparatistleader
+A+:thousandsofkashmirisrallytowelcomebackcancertreatment
+velopments in neural machine translation. We
+I(9): an explosion in iraq ’s restive northeastern province of diyala
+combine this probabilistic model with a genera-
+killedtwoussoldiersandwoundedtwomore,themilitaryreported
+tion algorithm which produces accurate abstrac- monday.
+G:twoussoldierskillediniraqblastdecembertoll###
+tive summaries. As a next step we would like A:#ustwosoldierskilledinrestivenortheastprovince
+A+:explosioninrestivenortheasternprovincekillstwoussoldiers
+tofurtherimprovethegrammaticalityofthesum-
+maries in a data-driven way, as well as scale this I(10): russianworldno. #nikolaydavydenkobecamethefifthwith-
+drawalthroughinjuryorillnessatthesydneyinternationalwednesday,
+system to generate paragraph-level summaries. retiringfromhissecondroundmatchwithafootinjury.
+G:tennis:davydenkopullsoutofsydneywithinjury
+Both pose additional challenges in terms of effi-
+A:davydenkopullsoutofsydneyinternationalwithfootinjury
+cientalignmentandconsistencyingeneration. A+:russianworldno.#davydenkoretiresatsydneyinternational
+I(11):russia’sgasandoilgiantgazpromandusoilmajorchevronhave
+setupajointventurebasedinresource-richnorthwesternsiberia,the
+interfaxnewsagencyreportedthursdayquotinggazpromofficials.
+References G:gazpromchevronsetupjointventure
+A:russianoilgiantchevronsetupsiberiajointventure
+Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua A+:russia’sgazpromsetupjointventureinsiberia
+Bengio. 2014. Neural machine translation by
+Figure 4: ExamplesentencesummariesproducedonGi-
+jointly learning to align and translate. CoRR,
+gaword.Iistheinput,AisABS,andGisthetrueheadline.
+abs/1409.0473.
+2023-08-28 15:03:27.199 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ Michele Banko, Vibhu O Mittal, and Michael J Wit- Kevin Knight and Daniel Marcu. 2002. Summariza-
+brock. 2000. Headline generation based on statis- tionbeyondsentenceextraction: Aprobabilisticap-
+ticaltranslation. InProceedingsofthe38thAnnual proach to sentence compression. Artificial Intelli-
+MeetingonAssociationforComputationalLinguis- gence,139(1):91–107.
+tics,pages318–325.AssociationforComputational
+Philipp Koehn, Hieu Hoang, Alexandra Birch, Chris
+Linguistics.
+Callison-Burch,MarcelloFederico,NicolaBertoldi,
+Brooke Cowan, Wade Shen, Christine Moran,
+YoshuaBengio,Re´jeanDucharme,PascalVincent,and
+Richard Zens, et al. 2007. Moses: Open source
+Christian Janvin. 2003. A neural probabilistic lan-
+toolkit for statistical machine translation. In Pro-
+guagemodel. TheJournalofMachineLearningRe-
+ceedings of the 45th annual meeting of the ACL on
+search,3:1137–1155.
+interactiveposteranddemonstrationsessions,pages
+177–180. Association for Computational Linguis-
+Kyunghyun Cho, Bart van Merrienboer, C¸aglar
+tics.
+Gu¨lc¸ehre,DzmitryBahdanau,FethiBougares,Hol-
+gerSchwenk, andYoshuaBengio. 2014. Learning
+Chin-YewLin. 2004. Rouge: Apackageforautomatic
+phrase representations using RNN encoder-decoder
+evaluation of summaries. In Text Summarization
+forstatisticalmachinetranslation. InProceedingsof
+Branches Out: Proceedings of the ACL-04 Work-
+EMNLP2014,pages1724–1734.
+shop,pages74–81.
+James Clarke and Mirella Lapata. 2008. Global in- Thang Luong, Ilya Sutskever, Quoc V. Le, Oriol
+ferenceforsentencecompression: Anintegerlinear Vinyals, and Wojciech Zaremba. 2015. Address-
+programmingapproach. JournalofArtificialIntelli- ing the rare word problem in neural machine trans-
+genceResearch,pages399–429. lation. In Proceedings of the 53rd Annual Meet-
+ing of the Association for Computational Linguis-
+Trevor Cohn and Mirella Lapata. 2008. Sentence tics,pages11–19.
+compressionbeyondworddeletion. InProceedings
+of the 22nd International Conference on Computa- Christopher D Manning, Prabhakar Raghavan, and
+tional Linguistics-Volume 1, pages 137–144. Asso- Hinrich Schu¨tze. 2008. Introduction to informa-
+ciationforComputationalLinguistics. tionretrieval,volume1. Cambridgeuniversitypress
+Cambridge.
+Hal Daume´ III and Daniel Marcu. 2002. A noisy-
+ChristopherDManning,MihaiSurdeanu,JohnBauer,
+channel model for document compression. In Pro-
+Jenny Finkel, Steven J Bethard, and David Mc-
+ceedingsofthe40thAnnualMeetingonAssociation
+Closky. 2014. The stanford corenlp natural lan-
+for Computational Linguistics, pages 449–456. As-
+guage processing toolkit. In Proceedings of 52nd
+sociationforComputationalLinguistics.
+Annual Meeting of the Association for Computa-
+tional Linguistics: System Demonstrations, pages
+Bonnie Dorr, David Zajic, and Richard Schwartz.
+55–60.
+2003. Hedge trimmer: A parse-and-trim approach
+toheadlinegeneration. InProceedingsoftheHLT- Courtney Napoles, Matthew Gormley, and Benjamin
+NAACL03onTextsummarizationworkshop-Volume Van Durme. 2012. Annotated gigaword. In Pro-
+5, pages 1–8. Association for Computational Lin- ceedingsoftheJointWorkshoponAutomaticKnowl-
+guistics. edge Base Construction and Web-scale Knowledge
+Extraction, pages 95–100. Association for Compu-
+KatjaFilippovaandYaseminAltun. 2013. Overcom- tationalLinguistics.
+ingthelackofparalleldatainsentencecompression.
+InEMNLP,pages1481–1491. Franz Josef Och. 2003. Minimum error rate training
+instatisticalmachinetranslation. InProceedingsof
+David Graff, Junbo Kong, Ke Chen, and Kazuaki the41stAnnualMeetingonAssociationforCompu-
+Maeda. 2003. English gigaword. Linguistic Data tational Linguistics-Volume 1, pages 160–167. As-
+Consortium,Philadelphia. sociationforComputationalLinguistics.
+PaulOver,HoaDang,andDonnaHarman. 2007. Duc
+Geoffrey E. Hinton, Nitish Srivastava, Alex
+incontext. InformationProcessing&Management,
+Krizhevsky, Ilya Sutskever, and Ruslan Salakhut-
+43(6):1506–1520.
+dinov. 2012. Improving neural networks by
+preventing co-adaptation of feature detectors.
+IlyaSutskever,OriolVinyals,andQuocVVLe. 2014.
+CoRR,abs/1207.0580.
+Sequence to sequence learning with neural net-
+works. InAdvancesinNeuralInformationProcess-
+HongyanJing. 2002. Usinghiddenmarkovmodeling
+ingSystems,pages3104–3112.
+todecomposehuman-writtensummaries. Computa-
+tionallinguistics,28(4):527–543. KristianWoodsend,YansongFeng,andMirellaLapata.
+2010. Generationwithquasi-synchronousgrammar.
+NalKalchbrennerandPhilBlunsom. 2013. Recurrent InProceedingsofthe2010conferenceonempirical
+continuous translation models. In EMNLP, pages methodsinnaturallanguageprocessing,pages513–
+1700–1709. 523.AssociationforComputationalLinguistics.
+2023-08-28 15:03:27.207 | DEBUG    | translator.pdf_parser:parse_pdf:46 - [raw_text]
+ Sander Wubben, Antal Van Den Bosch, and Emiel
+Krahmer. 2012. Sentence simplification by mono-
+lingual machine translation. In Proceedings of the
+50thAnnualMeetingoftheAssociationforCompu-
+tational Linguistics: Long Papers-Volume 1, pages
+1015–1024.AssociationforComputationalLinguis-
+tics.
+Omar Zaidan. 2009. Z-mert: A fully configurable
+opensourcetoolforminimumerrorratetrainingof
+machinetranslationsystems. ThePragueBulletinof
+MathematicalLinguistics,91:79–88.
+David Zajic, Bonnie Dorr, and Richard Schwartz.
+2004. Bbn/umd at duc-2004: Topiary. In Pro-
+ceedingsoftheHLT-NAACL2004DocumentUnder-
+standingWorkshop,Boston,pages112–119.
+2023-08-28 15:07:20.192 | DEBUG    | translator.writer:save_translated_book:18 - markdown
+2023-08-28 15:07:20.193 | INFO     | translator.writer:_save_translated_book_markdown:90 - 开始导出: /var/folders/x8/9kfcxm0d2ddfrb13lczqx9wh0000gn/T/gradio/9238d9933f6d02625d9d93431a7a031a7982d366/A Neural Attention Model for Abstractive Sentence Summarization_translated.md
+2023-08-28 15:07:20.194 | INFO     | translator.writer:save_translated_book:28 - 翻译完成，文件保存至: /var/folders/x8/9kfcxm0d2ddfrb13lczqx9wh0000gn/T/gradio/9238d9933f6d02625d9d93431a7a031a7982d366/A Neural Attention Model for Abstractive Sentence Summarization_translated.md
